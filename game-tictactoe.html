@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Хрестики-нулики | GameHub</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: Arial, sans-serif;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 10px;
+      justify-content: center;
+      margin: 2rem auto;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background-color: #2a2a2a;
+      font-size: 2.5rem;
+      color: #00ffc3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background 0.3s;
+    }
+
+    .cell:hover {
+      background-color: #444;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .btn-restart {
+      display: block;
+      margin: 1.5rem auto;
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #00ffc3;
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn-restart:hover {
+      background-color: #00cfa5;
+    }
+
+    .mode-select {
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .mode-select select {
+      padding: 8px 15px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background-color: #2a2a2a;
+      color: #00ffc3;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .mode-select label {
+      margin-right: 10px;
+      font-size: 1.1rem;
+    }
+
+    .navbar a {
+      color: #00ffc3;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <h1 class="logo">🎮 GameHub</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Головна</a></li>
+        <li><a href="games.html">Ігри</a></li>
+        <li><a href="leaderboard.html">Рекорди</a></li>
+        <li><a href="about.html">Про сайт</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="highlights">
+      <h2 style="text-align:center">Хрестики-нулики</h2>
+      <div class="mode-select">
+        <label for="mode">Режим гри:</label>
+        <select id="mode" onchange="startGame()">
+            <option value="pvp">Гравець vs Гравець</option>
+            <option value="bot-easy">Гравець vs Бот (простий)</option>
+            <option value="bot-smart">Гравець vs Бот (розумний)</option>
+        </select>
+      </div>
+      <div class="board" id="board"></div>
+      <div class="status" id="status"></div>
+      <button class="btn-restart" onclick="startGame()">Почати спочатку</button>
+    </section>
+  </main>
+
+  <footer>
+    <p style="text-align:center">&copy; 2025 GameHub. Усі права захищено.</p>
+  </footer>
+
+  <script>
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const modeSelect = document.getElementById("mode");
+
+    let board = [];
+    let currentPlayer = "X";
+    let gameOver = false;
+    let mode = "pvp";
+
+    const winCombos = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function startGame() {
+      mode = modeSelect.value;
+      board = Array(9).fill("");
+      currentPlayer = "X";
+      gameOver = false;
+      statusEl.textContent = "Хід гравця: ❌";
+      renderBoard();
+    }
+
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      board.forEach((cell, index) => {
+        const div = document.createElement("div");
+        div.classList.add("cell");
+        div.textContent = cell;
+        div.addEventListener("click", () => handleClick(index));
+        boardEl.appendChild(div);
+      });
+    }
+
+function handleClick(index) {
+  if (board[index] !== "" || gameOver) return;
+
+  board[index] = currentPlayer;
+  renderBoard();
+  if (checkGameEnd(currentPlayer)) return;
+
+  currentPlayer = currentPlayer === "X" ? "O" : "X";
+  statusEl.textContent = `Хід гравця: ${currentPlayer === "X" ? "❌" : "⭕"}`;
+
+  if (mode.includes("bot") && currentPlayer === "O") {
+    setTimeout(() => {
+      const move = mode === "bot-smart" ? getBestMove(board) : getEasyMove(board);
+      board[move] = "O";
+      renderBoard();
+      if (!checkGameEnd("O")) {
+        currentPlayer = "X";
+        statusEl.textContent = "Хід гравця: ❌";
+      }
+    }, 400);
+  }
+}
+
+function getEasyMove(board) {
+  const empty = board.map((v, i) => v === "" ? i : null).filter(i => i !== null);
+
+  // 20% шанс зробити правильний хід, 80% — випадковий
+  if (Math.random() < 0.2) {
+    return getBestMove(board); // іноді грає добре
+  }
+
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
+
+    function checkGameEnd(player) {
+      if (winCombos.some(c => c.every(i => board[i] === player))) {
+        gameOver = true;
+        const msg = mode === "bot" && player === "O"
+          ? "Бот переміг! 🤖"
+          : `Гравець ${player === "X" ? "❌" : "⭕"} переміг!`;
+        statusEl.textContent = msg;
+        saveScore(player);
+        return true;
+      }
+      if (!board.includes("")) {
+        gameOver = true;
+        statusEl.textContent = "Нічия!";
+        return true;
+      }
+      return false;
+    }
+
+    function saveScore(winner) {
+      if (mode === "bot" && winner === "O") return;
+      const name = prompt("Ваше ім’я для таблиці рекордів:", "Гравець");
+      if (!name) return;
+      const score = {
+        game: `Хрестики-нулики (${mode === "bot" ? "vs Bot" : "PvP"})`,
+        name,
+        points: `Перемога (${winner})`
+      };
+      const scores = JSON.parse(localStorage.getItem("gameScores")) || [];
+      scores.push(score);
+      localStorage.setItem("gameScores", JSON.stringify(scores));
+    }
+
+    function getBestMove(newBoard) {
+      function minimax(board, player) {
+        const huPlayer = "X", aiPlayer = "O";
+        const availSpots = board.map((v, i) => v === "" ? i : null).filter(i => i !== null);
+
+        if (checkWin(board, huPlayer)) return {score: -10};
+        if (checkWin(board, aiPlayer)) return {score: 10};
+        if (availSpots.length === 0) return {score: 0};
+
+        let moves = [];
+
+        for (let i = 0; i < availSpots.length; i++) {
+          let move = {};
+          move.index = availSpots[i];
+          board[availSpots[i]] = player;
+
+          let result = minimax(board, player === aiPlayer ? huPlayer : aiPlayer);
+          move.score = result.score;
+
+          board[availSpots[i]] = "";
+          moves.push(move);
+        }
+
+        let bestMove;
+        if (player === aiPlayer) {
+          let bestScore = -Infinity;
+          for (let i = 0; i < moves.length; i++) {
+            if (moves[i].score > bestScore) {
+              bestScore = moves[i].score;
+              bestMove = i;
+            }
+          }
+        } else {
+          let bestScore = Infinity;
+          for (let i = 0; i < moves.length; i++) {
+            if (moves[i].score < bestScore) {
+              bestScore = moves[i].score;
+              bestMove = i;
+            }
+          }
+        }
+
+        return moves[bestMove];
+      }
+
+      function checkWin(board, player) {
+        return winCombos.some(combo => combo.every(i => board[i] === player));
+      }
+
+      return minimax([...newBoard], "O").index;
+    }
+
+    startGame();
+  </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Рекорди | GameHub</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <h1 class="logo">🎮 GameHub</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Головна</a></li>
+        <li><a href="games.html">Ігри</a></li>
+        <li><a href="leaderboard.html" class="active">Рекорди</a></li>
+        <li><a href="about.html">Про сайт</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="highlights">
+      <h2>Таблиця рекордів</h2>
+      <p>Найкращі результати збережено у вашому браузері.</p>
+      <table id="scoreTable" style="margin: 2rem auto; width: 90%; max-width: 600px; color: #fff;">
+        <thead>
+          <tr>
+            <th>Гра</th>
+            <th>Гравець</th>
+            <th>Результат</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Результати завантажуються з JS -->
+        </tbody>
+      </table>
+      <button class="btn" onclick="clearScores()">Очистити таблицю</button>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 GameHub. Усі права захищено.</p>
+  </footer>
+
+  <script>
+    const scores = JSON.parse(localStorage.getItem('gameScores')) || [];
+    const tbody = document.querySelector('#scoreTable tbody');
+    if (scores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3">Рекордів ще немає.</td></tr>';
+    } else {
+      scores.forEach(score => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${score.game}</td><td>${score.name}</td><td>${score.points}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    function clearScores() {
+      if (confirm('Очистити всі рекорди?')) {
+        localStorage.removeItem('gameScores');
+        location.reload();
+      }
+    }
+  </script>
+</body>
+</html>

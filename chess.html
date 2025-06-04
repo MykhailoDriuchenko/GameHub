@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Шахи | GameHub</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      width: 480px;
+      margin: 2rem auto;
+      border: 2px solid #00ffc3;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .light {
+      background-color: #aec5b2;
+      color: #000;
+    }
+
+    .dark {
+      background-color: #0a3622;
+      color: #fff;
+    }
+
+    .highlight {
+      background-color: #00ffc36b !important;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .btn-restart {
+      display: block;
+      margin: 1rem auto;
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #00ffc3;
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn-restart:hover {
+      background-color: #00cfa5;
+    }
+
+    .white-piece {
+    color: white;
+    }
+
+    .black-piece {
+    color: black;
+    }
+
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <h1 class="logo">🎮 GameHub</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Головна</a></li>
+        <li><a href="games.html">Ігри</a></li>
+        <li><a href="leaderboard.html">Рекорди</a></li>
+        <li><a href="about.html">Про сайт</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <h2 style="text-align:center">♟️ Шахи (PvP)</h2>
+    <div class="board" id="board"></div>
+    <div class="status" id="status"></div>
+    <button class="btn-restart" onclick="startGame()">Почати спочатку</button>
+  </main>
+
+  <script>
+    const board = [];
+    let currentPlayer = "white";
+    let selected = null;
+    let gameOver = false;
+    let enPassantTarget = null;
+
+    const initialBoard = [
+      ["r", "n", "b", "q", "k", "b", "n", "r"],
+      ["p", "p", "p", "p", "p", "p", "p", "p"],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      ["P", "P", "P", "P", "P", "P", "P", "P"],
+      ["R", "N", "B", "Q", "K", "B", "N", "R"]
+    ];
+
+    const castleRights = {
+      white: { kingside: true, queenside: true },
+      black: { kingside: true, queenside: true }
+    };
+
+    function isWhite(piece) {
+      return piece && piece === piece.toUpperCase();
+    }
+
+    function renderBoard() {
+  const container = document.getElementById("board");
+  container.innerHTML = "";
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const square = document.createElement("div");
+      square.className = "cell " + ((r + c) % 2 === 0 ? "light" : "dark");
+      square.dataset.row = r;
+      square.dataset.col = c;
+      const piece = board[r][c];
+      if (piece) {
+        square.textContent = getPieceSymbol(piece);
+        square.classList.add(isWhite(piece) ? "white-piece" : "black-piece");
+      }
+      square.addEventListener("click", () => handleClick(r, c));
+      container.appendChild(square);
+    }
+  }
+}
+
+
+    function getPieceSymbol(piece) {
+      const symbols = {
+        K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
+        k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟"
+      };
+      return symbols[piece];
+    }
+
+    function handleClick(row, col) {
+      if (gameOver) return;
+
+      const piece = board[row][col];
+      if (selected) {
+        const [fromRow, fromCol] = selected;
+        const legalMoves = getLegalMoves(fromRow, fromCol);
+        if (legalMoves.some(([r, c]) => r === row && c === col)) {
+          movePiece(fromRow, fromCol, row, col);
+          selected = null;
+          renderBoard();
+          updateStatus();
+          return;
+        } else {
+          selected = null;
+          renderBoard();
+          return;
+        }
+      }
+
+      if (piece && isWhite(piece) === (currentPlayer === "white")) {
+        selected = [row, col];
+        highlightMoves(row, col);
+      }
+    }
+
+    function highlightMoves(row, col) {
+      renderBoard();
+      const legalMoves = getLegalMoves(row, col);
+      for (const [r, c] of legalMoves) {
+        const square = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (square) square.classList.add("highlight");
+      }
+    }
+
+    function movePiece(fromRow, fromCol, toRow, toCol) {
+      const piece = board[fromRow][fromCol];
+      const target = board[toRow][toCol];
+
+      if (piece.toLowerCase() === "k" && Math.abs(toCol - fromCol) === 2) {
+        if (toCol === 6) {
+          board[toRow][5] = board[toRow][7];
+          board[toRow][7] = null;
+        } else if (toCol === 2) {
+
+          board[toRow][3] = board[toRow][0];
+          board[toRow][0] = null;
+        }
+      }
+
+      if (piece.toLowerCase() === "p" && enPassantTarget && toRow === enPassantTarget[0] && toCol === enPassantTarget[1]) {
+        board[fromRow][toCol] = null;
+      }
+
+      board[toRow][toCol] = piece;
+      board[fromRow][fromCol] = null;
+
+      if (piece === "P" && toRow === 0) {
+        board[toRow][toCol] = "Q";
+      }
+      if (piece === "p" && toRow === 7) {
+        board[toRow][toCol] = "q";
+      }
+
+      if (piece.toLowerCase() === "p" && Math.abs(toRow - fromRow) === 2) {
+        enPassantTarget = [(fromRow + toRow) / 2, fromCol];
+      } else {
+        enPassantTarget = null;
+      }
+
+      if (piece === "K") castleRights.white = { kingside: false, queenside: false };
+      if (piece === "k") castleRights.black = { kingside: false, queenside: false };
+      if (piece === "R" && fromCol === 0 && fromRow === 7) castleRights.white.queenside = false;
+      if (piece === "R" && fromCol === 7 && fromRow === 7) castleRights.white.kingside = false;
+      if (piece === "r" && fromCol === 0 && fromRow === 0) castleRights.black.queenside = false;
+      if (piece === "r" && fromCol === 7 && fromRow === 0) castleRights.black.kingside = false;
+
+      currentPlayer = currentPlayer === "white" ? "black" : "white";
+    }
+
+    function getLegalMoves(r, c, ignoreCheck = false) {
+      const piece = board[r][c];
+      const isW = isWhite(piece);
+      const moves = [];
+
+      const push = (nr, nc) => {
+        if (nr < 0 || nr > 7 || nc < 0 || nc > 7) return;
+        const target = board[nr][nc];
+        if (!target || isWhite(target) !== isW) {
+          moves.push([nr, nc]);
+        }
+      };
+
+      if (!piece) return [];
+
+      const dir = isW ? -1 : 1;
+
+      switch (piece.toLowerCase()) {
+        case "p":
+          if (!board[r + dir]?.[c]) moves.push([r + dir, c]);
+          if (r === (isW ? 6 : 1) && !board[r + dir]?.[c] && !board[r + dir * 2]?.[c]) {
+            moves.push([r + dir * 2, c]);
+          }
+          for (const dc of [-1, 1]) {
+            const nr = r + dir, nc = c + dc;
+            if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+              const target = board[nr][nc];
+              if (target && isWhite(target) !== isW) {
+                moves.push([nr, nc]);
+              }
+              if (enPassantTarget && enPassantTarget[0] === nr && enPassantTarget[1] === nc) {
+                moves.push([nr, nc]);
+              }
+            }
+          }
+          break;
+
+        case "n":
+          for (const [dr, dc] of [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]]) {
+            push(r + dr, c + dc);
+          }
+          break;
+
+        case "b":
+          for (const [dr, dc] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+            for (let i = 1; i < 8; i++) {
+              const nr = r + dr * i, nc = c + dc * i;
+              if (!pushBreak(nr, nc)) break;
+            }
+          }
+          break;
+
+        case "r":
+          for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            for (let i = 1; i < 8; i++) {
+              const nr = r + dr * i, nc = c + dc * i;
+              if (!pushBreak(nr, nc)) break;
+            }
+          }
+          break;
+
+        case "q":
+          for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
+            for (let i = 1; i < 8; i++) {
+              const nr = r + dr * i, nc = c + dc * i;
+              if (!pushBreak(nr, nc)) break;
+            }
+          }
+          break;
+
+        case "k":
+          for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
+            push(r + dr, c + dc);
+          }
+          if (!ignoreCheck && !isInCheck(isW ? "white" : "black")) {
+            const rights = isW ? castleRights.white : castleRights.black;
+            const row = isW ? 7 : 0;
+            if (rights.kingside && !board[row][5] && !board[row][6]) {
+              if (!isAttacked(row, 5, !isW) && !isAttacked(row, 6, !isW)) {
+                moves.push([row, 6]);
+              }
+            }
+            if (rights.queenside && !board[row][1] && !board[row][2] && !board[row][3]) {
+              if (!isAttacked(row, 2, !isW) && !isAttacked(row, 3, !isW)) {
+                moves.push([row, 2]);
+              }
+            }
+          }
+          break;
+      }
+
+      return ignoreCheck ? moves : moves.filter(([nr, nc]) => !causesSelfCheck(r, c, nr, nc));
+
+      function pushBreak(nr, nc) {
+        if (nr < 0 || nr > 7 || nc < 0 || nc > 7) return false;
+        const target = board[nr][nc];
+        if (!target) {
+          moves.push([nr, nc]);
+          return true;
+        } else if (isWhite(target) !== isW) {
+          moves.push([nr, nc]);
+          return false;
+        } else {
+          return false;
+        }
+      }
+    }
+
+    function causesSelfCheck(fromR, fromC, toR, toC) {
+      const piece = board[fromR][fromC];
+      const backup = board[toR][toC];
+      board[toR][toC] = piece;
+      board[fromR][fromC] = null;
+      const inCheck = isInCheck(currentPlayer);
+      board[fromR][fromC] = piece;
+      board[toR][toC] = backup;
+      return inCheck;
+    }
+
+    function isInCheck(color) {
+      const isW = color === "white";
+      let kingR, kingC;
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = board[r][c];
+          if (piece === (isW ? "K" : "k")) {
+            kingR = r;
+            kingC = c;
+          }
+        }
+      }
+      return isAttacked(kingR, kingC, !isW);
+    }
+
+    function isAttacked(r, c, byWhite) {
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const p = board[i][j];
+          if (p && isWhite(p) === byWhite) {
+            const moves = getLegalMoves(i, j, true);
+            if (moves.some(([mr, mc]) => mr === r && mc === c)) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function updateStatus() {
+      if (isInCheck(currentPlayer)) {
+        let hasMoves = false;
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 8; c++) {
+            if (board[r][c] && isWhite(board[r][c]) === (currentPlayer === "white")) {
+              if (getLegalMoves(r, c).length > 0) {
+                hasMoves = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!hasMoves) {
+          document.getElementById("status").textContent = `Мат! ${currentPlayer === "white" ? "Чорні" : "Білі"} перемогли.`;
+          gameOver = true;
+          return;
+        } else {
+          document.getElementById("status").textContent = `Шах ${currentPlayer === "white" ? "білим" : "чорним"}`;
+        }
+      } else {
+        document.getElementById("status").textContent = `${currentPlayer === "white" ? "Білі" : "Чорні"} ходять`;
+      }
+    }
+
+    function startGame() {
+      for (let i = 0; i < 8; i++) {
+        board[i] = [...initialBoard[i]];
+      }
+      currentPlayer = "white";
+      gameOver = false;
+      selected = null;
+      enPassantTarget = null;
+      castleRights.white = { kingside: true, queenside: true };
+      castleRights.black = { kingside: true, queenside: true };
+      renderBoard();
+      updateStatus();
+    }
+
+    startGame();
+  </script>
+  <footer>
+    <p>&copy; 2025 GameHub. Усі права захищено.</p>
+  </footer>
+</body>
+</html>
+

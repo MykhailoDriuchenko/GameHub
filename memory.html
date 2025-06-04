@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memory Game | GameHub</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .memory-board {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      gap: 10px;
+      justify-content: center;
+      margin: 2rem auto;
+    }
+    .card {
+      width: 100px;
+      height: 100px;
+      background-color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: transparent;
+      cursor: pointer;
+      border: 2px solid #00ffc3;
+      border-radius: 10px;
+      user-select: none;
+      transition: 0.3s;
+    }
+    .card.revealed {
+      color: white;
+      background-color: #555;
+    }
+    .win-message {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <h1 class="logo">🎮 GameHub</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Головна</a></li>
+        <li><a href="games.html">Ігри</a></li>
+        <li><a href="leaderboard.html">Рекорди</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <h2 style="text-align:center; margin-top:1rem;">🧠 Memory Game</h2>
+    <div class="memory-board" id="memoryBoard"></div>
+    <div class="win-message" id="winMessage"></div>
+  </main>
+
+    <script>
+    const symbols = ['🍎','🍌','🍒','🍇','🍓','🍍','🥝','🍉'];
+    const board = document.getElementById("memoryBoard");
+    const message = document.getElementById("winMessage");
+    let cards = [...symbols, ...symbols]
+      .sort(() => 0.5 - Math.random())
+      .map((symbol, index) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.dataset.symbol = symbol;
+        card.dataset.index = index;
+        card.textContent = symbol;
+        board.appendChild(card);
+        return card;
+      });
+
+    let firstCard = null;
+    let lockBoard = false;
+    let matches = 0;
+    let moves = 0;
+
+    cards.forEach(card => {
+      card.addEventListener("click", () => {
+        if (lockBoard || card.classList.contains("revealed")) return;
+        card.classList.add("revealed");
+        if (!firstCard) {
+          firstCard = card;
+        } else {
+          moves++;
+          if (card.dataset.symbol === firstCard.dataset.symbol) {
+            matches++;
+            firstCard = null;
+            if (matches === 8) {
+              setTimeout(() => {
+                message.textContent = "🎉 Ви знайшли всі пари за " + moves + " ходів!";
+              }, 300);
+            }
+          } else {
+            lockBoard = true;
+            setTimeout(() => {
+              card.classList.remove("revealed");
+              firstCard.classList.remove("revealed");
+              firstCard = null;
+              lockBoard = false;
+            }, 1000);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+<footer>
+    <p style="text-align:center">&copy; 2025 GameHub. Усі права захищено.</p>
+  </footer>
+</html>
